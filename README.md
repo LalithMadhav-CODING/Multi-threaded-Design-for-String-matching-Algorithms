@@ -28,6 +28,16 @@ This project was built as an Operating Systems (OS) project, demonstrating the p
     └── test_boyer_moore.cpp # Sequential tests for algorithmic correctness
 ```
 
+## Datasets
+
+Due to GitHub's file size limits, the large genome dataset files required for extensive testing are not included in this repository. 
+
+To run tests on massive text files like genomes, please download them and place them in the `datasets/` directory:
+* **Human Genome**: You can download the human genome sequence (e.g., GRCh38) from the [NCBI Datasets portal](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_000001405.40/).
+* **E. Coli Genome**: You can download the E. Coli genome sequence from the [NCBI Datasets portal](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_000005845.2/).
+
+*(Note: Be sure to extract any `.gz` files into raw `.fna` text format before running the search!)*
+
 ## Prerequisites
 
 - **C++17 Compiler**: GCC, Clang, or MSVC.
