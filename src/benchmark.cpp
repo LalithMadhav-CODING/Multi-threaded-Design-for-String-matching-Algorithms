@@ -5,6 +5,7 @@
 // medians plus a per-phase breakdown to a CSV file.
 //
 // Usage: bm_bench <dataset.fna> <out.csv> [--quick] [--name NAME]
+//                 [--threads 1,8,24] [--sizes 1000000,1000000000] [--tasks-per-thread K]
 
 #include <algorithm>
 #include <cctype>
@@ -75,6 +76,18 @@ struct Summary {
     double med = 0, min = 0, max = 0;
 };
 
+std::vector<size_t> parseList(const std::string& arg) {
+    std::vector<size_t> values;
+    size_t pos = 0;
+    while (pos < arg.size()) {
+        size_t comma = arg.find(',', pos);
+        if (comma == std::string::npos) comma = arg.size();
+        values.push_back(static_cast<size_t>(std::stod(arg.substr(pos, comma - pos))));
+        pos = comma + 1;
+    }
+    return values;
+}
+
 Summary summarize(const std::vector<double>& v) {
     Summary s;
     s.med = median(v);
@@ -87,7 +100,8 @@ Summary summarize(const std::vector<double>& v) {
 
 int main(int argc, char* argv[]) {
     if (argc < 3) {
-        std::cerr << "Usage: " << argv[0] << " <dataset.fna> <out.csv> [--quick] [--name NAME]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <dataset.fna> <out.csv> [--quick] [--name NAME]"
+                  << " [--threads LIST] [--sizes LIST] [--tasks-per-thread K]" << std::endl;
         return 1;
     }
 
@@ -95,11 +109,19 @@ int main(int argc, char* argv[]) {
     std::string out_path = argv[2];
     bool quick = false;
     std::string name = std::filesystem::path(filepath).stem().string();
+    std::vector<size_t> custom_threads, custom_sizes;
+    int tasks_per_thread = 1;
     for (int i = 3; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--quick") quick = true;
         else if (arg == "--name" && i + 1 < argc) name = argv[++i];
+        else if (arg == "--threads" && i + 1 < argc) custom_threads = parseList(argv[++i]);
+        else if (arg == "--sizes" && i + 1 < argc) custom_sizes = parseList(argv[++i]);
+        else if (arg == "--tasks-per-thread" && i + 1 < argc) tasks_per_thread = std::stoi(argv[++i]);
     }
+    // Rows from runs that split the work into extra tasks are labelled separately
+    std::string par_label = tasks_per_thread > 1
+        ? "parallel_x" + std::to_string(tasks_per_thread) : "parallel";
 
     std::cerr << "Loading " << filepath << "..." << std::endl;
     std::string data = utils::readFile(filepath);
@@ -123,10 +145,15 @@ int main(int argc, char* argv[]) {
         if (s < data.size()) sizes.push_back(s);
     }
     if (!quick || data.size() <= 10000000ULL) sizes.push_back(data.size());
+    if (!custom_sizes.empty()) {
+        sizes.clear();
+        for (size_t s : custom_sizes) sizes.push_back(std::min(s, data.size()));
+    }
 
     std::vector<int> thread_counts = quick
         ? std::vector<int>{1, 2, 4, 8, 24}
         : std::vector<int>{1, 2, 4, 8, 12, 16, 20, 24, 32, 48};
+    if (!custom_threads.empty()) thread_counts.assign(custom_threads.begin(), custom_threads.end());
 
     // Short pattern: many matches. Long pattern: few matches, larger skips.
     const std::vector<std::string> patterns = {
@@ -181,13 +208,13 @@ int main(int argc, char* argv[]) {
                 ThreadPool pool(p);
 
                 bm::PhaseTimes phases;
-                std::vector<size_t> found = bm::searchParallel(text, pattern, p, pool, &phases); // warm-up
+                std::vector<size_t> found = bm::searchParallel(text, pattern, p, pool, &phases, tasks_per_thread); // warm-up
                 bool correct = (found == expected);
 
                 std::vector<double> total, pre, dispatch, search, merge, sort;
                 for (int r = 0; r < reps; ++r) {
                     auto start = Clock::now();
-                    found = bm::searchParallel(text, pattern, p, pool, &phases);
+                    found = bm::searchParallel(text, pattern, p, pool, &phases, tasks_per_thread);
                     total.push_back(secondsSince(start));
                     pre.push_back(phases.preprocess);
                     dispatch.push_back(phases.dispatch);
@@ -199,7 +226,7 @@ int main(int argc, char* argv[]) {
                 all_correct = all_correct && correct;
 
                 Summary par = summarize(total);
-                csv << name << ",parallel," << pattern << ',' << size << ',' << p << ',' << reps << ','
+                csv << name << ',' << par_label << ',' << pattern << ',' << size << ',' << p << ',' << reps << ','
                     << par.med << ',' << par.min << ',' << par.max << ','
                     << median(pre) << ',' << pool_cost[t] << ',' << median(dispatch) << ','
                     << median(search) << ',' << median(merge) << ',' << median(sort) << ','

@@ -15,14 +15,16 @@ struct PhaseTimes {
     double sort = 0.0;       // the sort + dedupe part of merge
 };
 
-// Data-parallel Boyer-Moore: splits the text into num_threads chunks that
-// overlap by (pattern length - 1) and searches them on the pool.
+// Data-parallel Boyer-Moore: splits the text into num_threads * tasks_per_thread
+// chunks that overlap by (pattern length - 1) and searches them on the pool.
+// More tasks than threads lets faster cores pick up extra chunks.
 // Returns all match positions in ascending order.
 std::vector<size_t> searchParallel(
     std::string_view text,
     std::string_view pattern,
     int num_threads,
     ThreadPool& pool,
-    PhaseTimes* times = nullptr);
+    PhaseTimes* times = nullptr,
+    int tasks_per_thread = 1);
 
 } // namespace bm

@@ -47,5 +47,9 @@ endif()
 add_executable(bm_bench src/benchmark.cpp src/boyer_moore.cpp src/parallel_bm.cpp src/thread_pool.cpp src/utils.cpp)
 target_link_libraries(bm_bench PRIVATE Threads::Threads)
 
+# Memory-bandwidth probe used in the analysis
+add_executable(membw src/membw.cpp)
+target_link_libraries(membw PRIVATE Threads::Threads)
+
 # Phase 1: Sequential Testing Executable
 add_executable(run_tests tests/test_boyer_moore.cpp src/boyer_moore.cpp)

@@ -18,9 +18,12 @@ std::vector<size_t> searchParallel(
     std::string_view pattern,
     int num_threads,
     ThreadPool& pool,
-    PhaseTimes* times)
+    PhaseTimes* times,
+    int tasks_per_thread)
 {
     if (num_threads <= 0) num_threads = 1;
+    if (tasks_per_thread <= 0) tasks_per_thread = 1;
+    int num_tasks = num_threads * tasks_per_thread;
 
     auto t0 = Clock::now();
 
@@ -30,14 +33,14 @@ std::vector<size_t> searchParallel(
     auto t1 = Clock::now();
 
     std::vector<std::future<std::vector<size_t>>> futures;
-    futures.reserve(num_threads);
+    futures.reserve(num_tasks);
     size_t text_len = text.length();
     size_t m = pattern.length();
-    size_t chunk_size = text_len / num_threads;
+    size_t chunk_size = text_len / num_tasks;
 
-    for (int i = 0; i < num_threads; ++i) {
+    for (int i = 0; i < num_tasks; ++i) {
         size_t start_idx = i * chunk_size;
-        size_t end_idx = (i == num_threads - 1) ? text_len : (i + 1) * chunk_size + m - 1;
+        size_t end_idx = (i == num_tasks - 1) ? text_len : (i + 1) * chunk_size + m - 1;
         if (end_idx > text_len) end_idx = text_len;
 
         futures.push_back(pool.enqueue([&, start_idx, end_idx]() {
@@ -48,7 +51,7 @@ std::vector<size_t> searchParallel(
     auto t2 = Clock::now();
 
     std::vector<std::vector<size_t>> partial;
-    partial.reserve(num_threads);
+    partial.reserve(num_tasks);
     for (auto& f : futures) {
         partial.push_back(f.get());
     }
