@@ -3,7 +3,7 @@
 
 namespace bm {
 
-std::vector<int> buildBadCharTable(const std::string& pattern) {
+std::vector<int> buildBadCharTable(std::string_view pattern) {
     std::vector<int> badChar(ALPHABET_SIZE, -1);
     // Initialize all occurrences as -1
     // Then fill the actual value of last occurrence of a character
@@ -13,7 +13,7 @@ std::vector<int> buildBadCharTable(const std::string& pattern) {
     return badChar;
 }
 
-std::vector<int> buildGoodSuffixTable(const std::string& pattern) {
+std::vector<int> buildGoodSuffixTable(std::string_view pattern) {
     int m = pattern.length();
     std::vector<int> goodSuffix(m, m);
     std::vector<int> suffixes(m, 0);
@@ -52,22 +52,25 @@ std::vector<int> buildGoodSuffixTable(const std::string& pattern) {
     return goodSuffix;
 }
 
-std::vector<size_t> searchSequential(const std::string& text, const std::string& pattern) {
+std::vector<size_t> searchChunk(
+    std::string_view text,
+    std::string_view pattern,
+    const std::vector<int>& badChar,
+    const std::vector<int>& goodSuffix,
+    size_t start_idx,
+    size_t end_idx)
+{
     std::vector<size_t> occurrences;
-    int n = text.length();
-    int m = pattern.length();
+    size_t m = pattern.length();
 
-    if (m == 0 || n == 0 || m > n) {
+    if (end_idx > text.length()) end_idx = text.length();
+    if (m == 0 || start_idx >= end_idx || m > end_idx - start_idx) {
         return occurrences;
     }
 
-    // Phase 1 preprocessing
-    std::vector<int> badChar = buildBadCharTable(pattern);
-    std::vector<int> goodSuffix = buildGoodSuffixTable(pattern);
-
-    int s = 0; // s is shift of the pattern with respect to text
-    while (s <= n - m) {
-        int j = m - 1;
+    size_t s = start_idx; // s is shift of the pattern with respect to text
+    while (s <= end_idx - m) {
+        int j = static_cast<int>(m) - 1;
 
         // Keep reducing index j of pattern while characters match
         while (j >= 0 && pattern[j] == text[s + j]) {
@@ -88,6 +91,18 @@ std::vector<size_t> searchSequential(const std::string& text, const std::string&
     }
 
     return occurrences;
+}
+
+std::vector<size_t> searchSequential(std::string_view text, std::string_view pattern) {
+    if (pattern.empty() || pattern.length() > text.length()) {
+        return {};
+    }
+
+    // Phase 1 preprocessing
+    std::vector<int> badChar = buildBadCharTable(pattern);
+    std::vector<int> goodSuffix = buildGoodSuffixTable(pattern);
+
+    return searchChunk(text, pattern, badChar, goodSuffix, 0, text.length());
 }
 
 } // namespace bm

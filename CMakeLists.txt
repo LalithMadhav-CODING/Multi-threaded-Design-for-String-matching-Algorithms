@@ -29,6 +29,7 @@ endif()
 add_executable(bm_search
     src/main.cpp
     src/boyer_moore.cpp
+    src/parallel_bm.cpp
     src/thread_pool.cpp
     src/utils.cpp
     src/fuzzy_search.cpp

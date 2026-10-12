@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <filesystem>
 #include "boyer_moore.h"
+#include "parallel_bm.h"
 #include "thread_pool.h"
 #include "utils.h"
 #include "fuzzy_search.h"
@@ -17,74 +18,11 @@
 
 namespace fs = std::filesystem;
 
-// Worker function: Boyer-Moore Search Chunk
-std::vector<size_t> searchChunkBM(
-    const std::string* text, 
-    const std::string* pattern, 
-    const std::vector<int>* badChar, 
-    const std::vector<int>* goodSuffix,
-    size_t start_idx, 
-    size_t end_idx) 
-{
-    std::vector<size_t> local_occurrences;
-    int m = pattern->length();
-    size_t n = end_idx;
-
-    if (m == 0 || n == 0 || m > n || start_idx >= end_idx) {
-        return local_occurrences;
-    }
-
-    size_t s = start_idx; 
-    while (s <= n - m) {
-        int j = m - 1;
-
-        while (j >= 0 && (*pattern)[j] == (*text)[s + j]) {
-            j--;
-        }
-
-        if (j < 0) {
-            // Pattern found!
-            local_occurrences.push_back(s);
-            s += (*goodSuffix)[0];
-        } else {
-            int badCharShift = j - (*badChar)[static_cast<unsigned char>((*text)[s + j])];
-            int goodSuffixShift = (*goodSuffix)[j];
-            s += std::max(badCharShift, goodSuffixShift);
-        }
-    }
-
-    return local_occurrences;
-}
-
 // Wrapper for running Boyer-Moore
 double runBoyerMoore(const std::string& text, const std::string& pattern, int num_threads, ThreadPool& pool, size_t& out_count) {
     auto start_time = std::chrono::high_resolution_clock::now();
-    
-    std::vector<int> badChar = bm::buildBadCharTable(pattern);
-    std::vector<int> goodSuffix = bm::buildGoodSuffixTable(pattern);
 
-    std::vector<std::future<std::vector<size_t>>> futures;
-    size_t text_len = text.length();
-    size_t m = pattern.length();
-    size_t chunk_size = text_len / num_threads;
-
-    for (int i = 0; i < num_threads; ++i) {
-        size_t start_idx = i * chunk_size;
-        size_t end_idx = (i == num_threads - 1) ? text_len : (i + 1) * chunk_size + m - 1;
-        if (end_idx > text_len) end_idx = text_len;
-
-        futures.push_back(pool.enqueue(searchChunkBM, &text, &pattern, &badChar, &goodSuffix, start_idx, end_idx));
-    }
-
-    std::vector<size_t> all_occurrences;
-    for (auto& f : futures) {
-        auto local_results = f.get();
-        all_occurrences.insert(all_occurrences.end(), local_results.begin(), local_results.end());
-    }
-
-    std::sort(all_occurrences.begin(), all_occurrences.end());
-    auto last = std::unique(all_occurrences.begin(), all_occurrences.end());
-    all_occurrences.erase(last, all_occurrences.end());
+    std::vector<size_t> all_occurrences = bm::searchParallel(text, pattern, num_threads, pool);
 
     auto end_time = std::chrono::high_resolution_clock::now();
     out_count = all_occurrences.size();
