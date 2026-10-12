@@ -1,0 +1,52 @@
+### threads=1
+
+Loading dataset...
+Text loaded. Length: 3339739109 characters.
+Pattern: 'GATTACAGATTACA' | Threads: 1
+======================================
+[Running] Boyer-Moore (Exact)... Done!
+  -> Found: 22 occurrences
+  -> Time:  2.38541 seconds
+--------------------------------------
+[Running] Fuzzy Bitap (k=1)... Done!
+  -> Found: 1014 occurrences
+  -> Time:  3.26478 seconds
+--------------------------------------
+[Running] AVX2 SIMD (Exact)... Done!
+  -> Found: 22 occurrences
+  -> Time:  1.02274 seconds
+--------------------------------------
+[Running] Aho-Corasick (Multi-Pattern)... Done!
+  -> Found: 31 occurrences
+  -> Time:  6.10341 seconds
+--------------------------------------
+[Running] CUDA GPU (Exact)... Done!
+  -> Found: 22 occurrences
+  -> Time:  0.292182 seconds
+--------------------------------------
+### threads=24
+
+Loading dataset...
+Text loaded. Length: 3339739109 characters.
+Pattern: 'GATTACAGATTACA' | Threads: 24
+======================================
+[Running] Boyer-Moore (Exact)... Done!
+  -> Found: 22 occurrences
+  -> Time:  0.207681 seconds
+--------------------------------------
+[Running] Fuzzy Bitap (k=1)... Done!
+  -> Found: 1014 occurrences
+  -> Time:  0.234106 seconds
+--------------------------------------
+[Running] AVX2 SIMD (Exact)... Done!
+  -> Found: 22 occurrences
+  -> Time:  0.0843925 seconds
+--------------------------------------
+[Running] Aho-Corasick (Multi-Pattern)... Done!
+  -> Found: 31 occurrences
+  -> Time:  0.411871 seconds
+--------------------------------------
+[Running] CUDA GPU (Exact)... Done!
+  -> Found: 22 occurrences
+  -> Time:  0.280567 seconds
+--------------------------------------
