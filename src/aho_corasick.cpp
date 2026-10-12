@@ -10,6 +10,8 @@ AhoCorasick::AhoCorasick(const std::vector<std::string>& patterns) {
 
 void AhoCorasick::buildTrie(const std::vector<std::string>& patterns) {
     for (size_t p = 0; p < patterns.size(); ++p) {
+        pattern_lengths.push_back(patterns[p].length());
+        max_len = std::max(max_len, patterns[p].length());
         int current = 0;
         for (char c : patterns[p]) {
             unsigned char uc = static_cast<unsigned char>(c);
@@ -79,8 +81,8 @@ std::vector<size_t> AhoCorasick::searchChunk(const std::string* text, size_t sta
             current = 0;
         }
         
-        if (!nodes[current].output.empty()) {
-            occurrences.push_back(i);
+        for (int p : nodes[current].output) {
+            occurrences.push_back(i + 1 - pattern_lengths[p]);
         }
     }
     return occurrences;

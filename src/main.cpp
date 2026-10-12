@@ -170,11 +170,13 @@ double runAhoCorasick(const std::string& text, const std::string& pattern, int n
 
     std::vector<std::future<std::vector<size_t>>> futures;
     size_t text_len = text.length();
+    size_t m = ac.maxPatternLength();
     size_t chunk_size = text_len / num_threads;
 
     for (int i = 0; i < num_threads; ++i) {
         size_t start_idx = i * chunk_size;
-        size_t end_idx = (i == num_threads - 1) ? text_len : (i + 1) * chunk_size;
+        size_t end_idx = (i == num_threads - 1) ? text_len : (i + 1) * chunk_size + m - 1;
+        if (end_idx > text_len) end_idx = text_len;
 
         futures.push_back(pool.enqueue([&ac, &text, start_idx, end_idx]() {
             return ac.searchChunk(&text, start_idx, end_idx);
