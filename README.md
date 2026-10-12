@@ -35,6 +35,7 @@ Due to GitHub's file size limits, the large genome dataset files required for ex
 To run tests on massive text files like genomes, please download them and place them in the `datasets/` directory:
 * **Human Genome**: You can download the human genome sequence (e.g., GRCh38) from the [NCBI Datasets portal](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_000001405.40/).
 * **E. Coli Genome**: You can download the E. Coli genome sequence from the [NCBI Datasets portal](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_000005845.2/).
+* **Wheat Genome** (~14.6 GB, used for the largest benchmark inputs): *Triticum aestivum* IWGSC CS RefSeq v2.1 from the [NCBI Datasets portal](https://www.ncbi.nlm.nih.gov/datasets/genome/GCF_018294505.1/). Save it as `datasets/wheat_genome.fna`.
 
 *(Note: Be sure to extract any `.gz` files into raw `.fna` text format before running the search!)*
 
@@ -92,6 +93,27 @@ Run the main executable (`bm_search`) from the build directory.
 2. **Chunking**: The text is divided into chunks based on the number of threads. Each chunk's end index is extended by `M - 1` (where `M` is the length of the pattern) to ensure patterns crossing chunk boundaries are found.
 3. **Parallel Search**: Tasks are enqueued into the thread pool. Each thread searches its designated chunk using the precomputed tables.
 4. **Aggregation**: Once all threads finish, the main thread collects all occurrences, sorts them, and removes any duplicates caused by the overlapping chunks.
+
+## Benchmarking and Analysis
+
+The parallelism analysis (small vs large inputs, thread overhead, crossover point) is written up in [`docs/report.md`](docs/report.md). To reproduce it:
+
+1. Build in Release mode (the default) as above. This also produces `bm_bench`.
+2. Run the sweep for each dataset; results are appended to one CSV:
+   ```bash
+   ./bm_bench ../datasets/ecoli_genome.fna ../results/bm_results.csv --name ecoli
+   ./bm_bench ../datasets/human_genome.fna ../results/bm_results.csv --name human
+   ./bm_bench ../datasets/wheat_genome.fna ../results/bm_results.csv --name wheat
+   ```
+   Add `--quick` for a short sweep (inputs up to 10 MB, fewer thread counts) to check that everything works.
+   The follow-up experiments in report section 7 (core types, chunks per thread, memory bandwidth, clock speed) run from the repository root with `scripts/run_experiments.sh build`. Its CPU numbering is specific to the Intel Core Ultra 9 285.
+3. Generate the plots and the summary tables:
+   ```bash
+   python3 -m venv .venv && .venv/bin/pip install matplotlib pandas
+   .venv/bin/python scripts/plot_results.py results/bm_results.csv results/plots
+   ```
+
+`bm_bench` keeps only the nucleotide sequence of the FASTA file (headers, line breaks and `N` bases removed, lowercase bases upper-cased) and checks every parallel result against the sequential one. The full human + wheat sweep needs about 30 GB of RAM.
 
 ## Running Tests
 
